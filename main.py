@@ -1,7 +1,6 @@
-from machine import Pin, ADC, lightsleep, deepsleep
+from machine import Pin, ADC, lightsleep
 from neopixel import NeoPixel
 from time import sleep_ms, ticks_ms, ticks_diff
-from sys import maxsize
 
 speed_input = ADC(Pin(27))
 width_input = ADC(Pin(26))
