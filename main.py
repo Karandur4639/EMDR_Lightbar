@@ -9,8 +9,8 @@ width_input = ADC(Pin(26))
 brightness_input = ADC(Pin(28))
 
 pixel_count = 73
-np = NeoPixel(Pin(16), pixel_count)
-power_btn = Pin(6, Pin.IN, Pin.PULL_UP)
+np = NeoPixel(Pin(22), pixel_count)
+power_btn = Pin(9, Pin.IN, Pin.PULL_UP)
 
 update_delay = 3
 color_white = (255, 255, 255)
