@@ -14,7 +14,7 @@ power_btn = Pin(6, Pin.IN, Pin.PULL_UP)
 
 update_delay = 3
 color_white = (255, 255, 255)
-fade_duration = 650
+fade_duration = 750
 
 brightness = 1
 animation_delay = 20
@@ -46,7 +46,7 @@ def update_inputs():
     led_width = round(remap(width_value, 0, 65535, 1, 12))
 
     speed_value = speed_input.read_u16()
-    animation_delay = round(remap(speed_value, 0, 65535, 500, 5))
+    animation_delay = round(remap(speed_value, 0, 65535, 500, 7))
 
 
 def set_lights(color):
@@ -75,9 +75,9 @@ def move_lights():
 
 def is_centered():
     if forward:
-        return pos == pixel_count // 2 + led_width // 2
+        return pos == (pixel_count + led_width) // 2
     else:
-        return pos == pixel_count // 2 - led_width // 2
+        return pos == (pixel_count - led_width) // 2 + 1
 
 
 def low_power(immdeiate):
@@ -93,6 +93,7 @@ def low_power(immdeiate):
 
     power_btn.irq(handler=power_btn_change, trigger=PIN_CHANGE)
     if not immdeiate:
+        ratio = 1
         while not is_centered():
             update_inputs()
 
@@ -100,14 +101,15 @@ def low_power(immdeiate):
             set_lights(scale_color(brightness))
 
             np.write()
-            sleep_ms(min(animation_delay, 8))
+            sleep_ms(min(round(animation_delay * ratio), 85))
+            ratio *= 1.05
 
         forward = True
         start = ticks_ms()
 
         while ticks_diff(ticks_ms(), start) < fade_duration:
             update_inputs()
-            pos = pixel_count // 2 + led_width // 2
+            pos = (pixel_count + led_width) // 2
 
             ratio = ticks_diff(ticks_ms(), start) / fade_duration
             scaled_color = scale_color((1 - ratio) * brightness)
@@ -130,7 +132,7 @@ def low_power(immdeiate):
 
     while ticks_diff(ticks_ms(), start) < fade_duration:
         update_inputs()
-        pos = pixel_count // 2 + led_width // 2
+        pos = (pixel_count + led_width) // 2
 
         ratio = ticks_diff(ticks_ms(), start) / fade_duration
         scaled_color = scale_color(ratio * brightness)
