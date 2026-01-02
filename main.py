@@ -11,6 +11,7 @@ brightness_input = ADC(Pin(28))
 pixel_count = 73
 np = NeoPixel(Pin(22), pixel_count)
 power_btn = Pin(9, Pin.IN, Pin.PULL_UP)
+np_enable = Pin(21, Pin.OUT)
 
 update_delay = 3
 color_white = (255, 255, 255)
@@ -121,11 +122,14 @@ def low_power(immdeiate):
 
     np.fill((0, 0, 0))
     np.write()
+    np_enable.low()
 
     power_off = True
     while power_off:
         lightsleep(60000)
+    
     power_btn.irq(handler=None)
+    np_enable.high()
 
     forward = True
     start = ticks_ms()
@@ -144,7 +148,7 @@ def low_power(immdeiate):
 
     last_update = ticks_ms()
 
-
+np_enable.high()
 np.fill((0, 0, 0))
 np.write()
 
