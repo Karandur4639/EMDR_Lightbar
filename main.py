@@ -1,6 +1,6 @@
 from machine import Pin, ADC, lightsleep
 from neopixel import NeoPixel
-from time import sleep_ms, ticks_ms, ticks_diff
+from time import sleep_ms, ticks_ms, ticks_diff, ticks_add
 
 PIN_CHANGE = Pin.IRQ_FALLING | Pin.IRQ_RISING
 
@@ -39,15 +39,27 @@ def scale_color(scale):
 
 def update_inputs():
     global brightness, led_width, animation_delay
+    updated = False
 
     brightness_value = brightness_input.read_u16()
-    brightness = remap(brightness_value, 0, 65535, 0.01, 1.0)
+    new_brightness = remap(brightness_value, 0, 65535, 0.01, 1.0)
+    if new_brightness != brightness:
+        updated = True
+        brightness = new_brightness
 
     width_value = width_input.read_u16()
-    led_width = round(remap(width_value, 0, 65535, 1, 12))
+    new_led_width = round(remap(width_value, 0, 65535, 1, 12))
+    if new_led_width != led_width:
+        updated = True
+        led_width = new_led_width
 
     speed_value = speed_input.read_u16()
-    animation_delay = round(remap(speed_value, 0, 65535, 500, 7))
+    new_animation_delay = round(remap(speed_value, 0, 65535, 500, 7))
+    if new_animation_delay != animation_delay:
+        updated = True
+        animation_delay = new_animation_delay
+
+    return updated
 
 
 def set_lights(color):
@@ -156,15 +168,17 @@ update_inputs()
 low_power(True)
 
 while True:
-    update_inputs()
+    has_changes = update_inputs()
 
     now = ticks_ms()
     while ticks_diff(now, last_update) >= animation_delay:
-        last_update += animation_delay
+        has_changes = True
+        last_update = ticks_add(last_update, animation_delay)
         move_lights()
 
-    set_lights(scale_color(brightness))
-    np.write()
+    if has_changes:
+        set_lights(scale_color(brightness))
+        np.write()
 
     if power_btn.value() == 1:
         sleep_ms(update_delay)
