@@ -13,7 +13,7 @@ np = NeoPixel(Pin(22), pixel_count)
 power_btn = Pin(9, Pin.IN, Pin.PULL_UP)
 np_enable = Pin(21, Pin.OUT)
 
-update_delay = 3
+update_delay = 2
 color_white = (255, 255, 255)
 fade_duration = 750
 
@@ -54,7 +54,7 @@ def update_inputs():
         led_width = new_led_width
 
     speed_value = speed_input.read_u16()
-    new_animation_delay = round(remap(speed_value, 0, 65535, 500, 7))
+    new_animation_delay = round(remap(speed_value, 0, 65535, 85, 4))
     if new_animation_delay != animation_delay:
         updated = True
         animation_delay = new_animation_delay
