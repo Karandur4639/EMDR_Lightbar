@@ -1,6 +1,7 @@
 from machine import Pin, ADC, lightsleep
 from neopixel import NeoPixel
 from time import sleep_ms, ticks_ms, ticks_diff, ticks_add
+from math import log
 
 PIN_CHANGE = Pin.IRQ_FALLING | Pin.IRQ_RISING
 
@@ -33,6 +34,12 @@ def remap(x, in_min, in_max, out_min, out_max):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
+def linearize_log(value, min_val=325, max_val=65535, curve=1.25):
+    clamped = max(min(value, max_val), min_val)
+    normalized = (clamped - min_val) / (max_val - min_val)
+    return log(1 + normalized * (curve - 1)) / log(curve) * max_val
+
+
 def scale_color(scale):
     return list(map(lambda x: round(x * scale), color_white))
 
@@ -41,19 +48,19 @@ def update_inputs():
     global brightness, led_width, animation_delay
     updated = False
 
-    brightness_value = brightness_input.read_u16()
+    brightness_value = linearize_log(brightness_input.read_u16())
     new_brightness = remap(brightness_value, 0, 65535, 0.01, 1.0)
     if new_brightness != brightness:
         updated = True
         brightness = new_brightness
 
-    width_value = width_input.read_u16()
+    width_value = linearize_log(width_input.read_u16())
     new_led_width = round(remap(width_value, 0, 65535, 1, 12))
     if new_led_width != led_width:
         updated = True
         led_width = new_led_width
 
-    speed_value = speed_input.read_u16()
+    speed_value = linearize_log(speed_input.read_u16())
     new_animation_delay = round(remap(speed_value, 0, 65535, 85, 4))
     if new_animation_delay != animation_delay:
         updated = True
