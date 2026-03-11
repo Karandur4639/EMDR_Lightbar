@@ -34,7 +34,7 @@ def remap(x, in_min, in_max, out_min, out_max):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
-def linearize_log(value, min_val=325, max_val=65535, curve=1.25):
+def linearize_log(value, min_val=325, max_val=65535, curve=10):
     clamped = max(min(value, max_val), min_val)
     normalized = (clamped - min_val) / (max_val - min_val)
     return log(1 + normalized * (curve - 1)) / log(curve) * max_val
@@ -48,8 +48,8 @@ def update_inputs():
     global brightness, led_width, animation_delay
     updated = False
 
-    brightness_value = linearize_log(brightness_input.read_u16())
-    new_brightness = remap(brightness_value, 0, 65535, 0.01, 1.0)
+    brightness_value = brightness_input.read_u16()
+    new_brightness = remap(brightness_value, 0, 65535, 0.01, 0.8)
     if new_brightness != brightness:
         updated = True
         brightness = new_brightness
