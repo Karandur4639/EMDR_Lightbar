@@ -1,7 +1,7 @@
 from machine import Pin, ADC, lightsleep
 from neopixel import NeoPixel
 from time import sleep_ms, ticks_ms, ticks_diff, ticks_add
-from math import log
+from math import log, floor
 
 PIN_CHANGE = Pin.IRQ_FALLING | Pin.IRQ_RISING
 
@@ -21,8 +21,10 @@ fade_duration = 750
 brightness = 1
 animation_delay = 20
 led_width = 5
+fade_delay = 5
+speed_decay = 0.02
 
-pos = led_width
+pos = 0
 forward = True
 last_update = 0
 
@@ -49,7 +51,7 @@ def update_inputs():
     updated = False
 
     brightness_value = brightness_input.read_u16()
-    new_brightness = remap(brightness_value, 0, 65535, 0.01, 0.8)
+    new_brightness = remap(brightness_value, 0, 65535, 0.01, 1)
     if new_brightness != brightness:
         updated = True
         brightness = new_brightness
@@ -93,11 +95,38 @@ def move_lights():
             pos = led_width - 1
 
 
-def is_centered():
+def get_centered_pos():
     if forward:
-        return pos == (pixel_count + led_width) // 2
+        return (pixel_count + led_width) // 2 - 1
     else:
-        return pos == (pixel_count - led_width) // 2 + 1
+        return (pixel_count - led_width) // 2
+
+
+def is_centered():
+    return pos == get_centered_pos()
+
+
+def animate(delay=None):
+    global last_update
+
+    has_changes = update_inputs()
+    frames = 0
+
+    if delay is None:
+        delay = animation_delay
+
+    now = ticks_ms()
+    while ticks_diff(now, last_update) >= delay:
+        has_changes = True
+        last_update = ticks_add(last_update, delay)
+        frames += 1
+        move_lights()
+
+    if has_changes:
+        set_lights(scale_color(brightness))
+        np.write()
+
+    return frames
 
 
 def low_power(immdeiate):
@@ -113,7 +142,22 @@ def low_power(immdeiate):
 
     power_btn.irq(handler=power_btn_change, trigger=PIN_CHANGE)
     if not immdeiate:
+        last_forward = forward
+        bounces_remaining = 4
         ratio = 1
+
+        while bounces_remaining > 0:
+            animate(round(min(animation_delay * ratio, animation_delay * 4)))
+
+            if last_forward != forward:
+                last_forward = forward
+                bounces_remaining -= 1
+
+            if bounces_remaining == 1:
+                ratio += speed_decay
+
+            sleep_ms(update_delay)
+
         while not is_centered():
             update_inputs()
 
@@ -121,15 +165,12 @@ def low_power(immdeiate):
             set_lights(scale_color(brightness))
 
             np.write()
-            sleep_ms(min(round(animation_delay * ratio), 85))
-            ratio *= 1.05
+            ratio += speed_decay
+            sleep_ms(round(min(animation_delay * ratio, animation_delay * 4)))
 
-        forward = True
         start = ticks_ms()
-
         while ticks_diff(ticks_ms(), start) < fade_duration:
             update_inputs()
-            pos = (pixel_count + led_width) // 2
 
             ratio = ticks_diff(ticks_ms(), start) / fade_duration
             scaled_color = scale_color((1 - ratio) * brightness)
@@ -137,7 +178,7 @@ def low_power(immdeiate):
             set_lights(scaled_color)
             np.write()
 
-            sleep_ms(5)
+            sleep_ms(fade_delay)
 
     np.fill((0, 0, 0))
     np.write()
@@ -146,16 +187,15 @@ def low_power(immdeiate):
     power_off = True
     while power_off:
         lightsleep(60000)
-    
+
     power_btn.irq(handler=None)
     np_enable.high()
 
-    forward = True
     start = ticks_ms()
+    pos = get_centered_pos()
 
     while ticks_diff(ticks_ms(), start) < fade_duration:
         update_inputs()
-        pos = (pixel_count + led_width) // 2
 
         ratio = ticks_diff(ticks_ms(), start) / fade_duration
         scaled_color = scale_color(ratio * brightness)
@@ -163,9 +203,10 @@ def low_power(immdeiate):
         set_lights(scaled_color)
         np.write()
 
-        sleep_ms(5)
+        sleep_ms(fade_delay)
 
     last_update = ticks_ms()
+
 
 np_enable.high()
 np.fill((0, 0, 0))
@@ -175,17 +216,7 @@ update_inputs()
 low_power(True)
 
 while True:
-    has_changes = update_inputs()
-
-    now = ticks_ms()
-    while ticks_diff(now, last_update) >= animation_delay:
-        has_changes = True
-        last_update = ticks_add(last_update, animation_delay)
-        move_lights()
-
-    if has_changes:
-        set_lights(scale_color(brightness))
-        np.write()
+    animate()
 
     if power_btn.value() == 1:
         sleep_ms(update_delay)
