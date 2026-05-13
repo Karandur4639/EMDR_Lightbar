@@ -21,8 +21,10 @@ fade_duration = 750
 brightness = 1
 animation_delay = 20
 led_width = 5
+
 fade_delay = 5
 speed_decay = 0.02
+max_slow_multiplier = 4
 
 pos = 0
 forward = True
@@ -147,14 +149,15 @@ def low_power(immdeiate):
         ratio = 1
 
         while bounces_remaining > 0:
-            animate(round(min(animation_delay * ratio, animation_delay * 4)))
+            frames = animate(round(min(animation_delay * ratio, animation_delay * max_slow_multiplier)))
 
             if last_forward != forward:
                 last_forward = forward
                 bounces_remaining -= 1
 
             if bounces_remaining == 1:
-                ratio += speed_decay
+                for _ in range(frames):
+                    ratio += speed_decay
 
             sleep_ms(update_delay)
 
@@ -166,7 +169,7 @@ def low_power(immdeiate):
 
             np.write()
             ratio += speed_decay
-            sleep_ms(round(min(animation_delay * ratio, animation_delay * 4)))
+            sleep_ms(round(min(animation_delay * ratio, animation_delay * max_slow_multiplier)))
 
         start = ticks_ms()
         while ticks_diff(ticks_ms(), start) < fade_duration:
